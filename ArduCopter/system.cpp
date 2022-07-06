@@ -212,6 +212,10 @@ void Copter::init_ardupilot()
         set_mode(Mode::Number::STABILIZE, ModeReason::UNAVAILABLE);
     }
 
+    //MG
+//    arduino.init();
+    newardu.init();
+
     // flag that initialisation has completed
     ap.initialised = true;
 }

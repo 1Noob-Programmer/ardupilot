@@ -551,6 +551,9 @@ void Copter::ten_hz_logging_loop()
         g2.winch.write_log();
     }
 #endif
+//    if(arduino.init_au){
+//    arduino.send_commands(0x16,arduino.printWelcome);
+//    }
 }
 
 // twentyfive_hz_logging - should be run at 25hz
@@ -624,11 +627,28 @@ void Copter::one_hz_loop()
     // log terrain data
     terrain_logging();
 
+    //MG
+    if(newardu.init_once && newardu.init())
+       {
+    	hal.console->printf("copter -- read and write\n");
+       	if(newardu.write_ardu && !newardu.read_ardu)
+       	{
+       		hal.console->printf("write arduino\n");
+       		newardu.write_to_arduino(newardu.printWelcome,0x16);
+       	}
+       	if(!newardu.write_ardu && newardu.read_ardu)
+       	{
+       		hal.console->printf("read arduino\n");
+       		newardu.read_from_arduino(newardu.readWelcome,0x16);
+       	}
+       }
+
 #if HAL_ADSB_ENABLED
     adsb.set_is_flying(!ap.land_complete);
 #endif
 
     AP_Notify::flags.flying = !ap.land_complete;
+
 }
 
 void Copter::init_simple_bearing()

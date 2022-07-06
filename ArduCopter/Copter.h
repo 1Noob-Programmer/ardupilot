@@ -70,6 +70,10 @@
 #include <AP_ADSB/AP_ADSB.h>                // ADS-B RF based collision avoidance module library
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 
+//MG
+#include <AP_arduinoI2c/arduinoi2c.h>
+#include <AP_arduinoI2c/newardu2pix.h>
+
 // Configuration
 #include "defines.h"
 #include "config.h"
@@ -239,6 +243,10 @@ private:
     RC_Channel *channel_yaw;
 
     AP_Logger logger;
+
+    //MG
+    arduinoi2c arduino;
+    Newardu2pix newardu;
 
     // flight modes convenience array
     AP_Int8 *flight_modes;
