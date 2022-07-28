@@ -212,10 +212,11 @@ void Copter::init_ardupilot()
         set_mode(Mode::Number::STABILIZE, ModeReason::UNAVAILABLE);
     }
 
-    //NSCC
+    //MG
 //    arduino.init();
     newardu.init();
 //    aus.init_serial();
+//    swc.init_serial();
 
     // flag that initialisation has completed
     ap.initialised = true;

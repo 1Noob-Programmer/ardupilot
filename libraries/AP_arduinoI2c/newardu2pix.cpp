@@ -19,12 +19,10 @@ Newardu2pix::Newardu2pix(AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev): _dev(std::move(
 	num_instances = 0;
 	read_ardu = false;
 	write_ardu = false;
-	//_available = true;
 }
 
 Newardu2pix::Newardu2pix()
 {
-	//_available = true;
 	init_once = false;
 	num_instances = 0;
 	read_ardu = false;
@@ -105,46 +103,61 @@ Newardu2pix *Newardu2pix::detect(AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev)
 bool Newardu2pix::checking_arduino()
 {
 	hal.console->printf("checking arduino\n");
-	const uint8_t check[] = {0xFF,0xFE,0xFF};
-	uint8_t val;
-	bool ret;
+	uint8_t read;
 
 	_dev->get_semaphore()->take_blocking();
 
-	_dev->set_retries(0);
+	_dev->set_retries(2);
 
-	/*
-	 * Check we get a response for firmware version to detect if sensor is there
-	 */
-	ret = _dev->transfer(check, sizeof(check), nullptr, 0);
-	if (!ret) {
-		hal.console->printf("checking arduino transfer fail\n");
-		hal.console->printf("Fail  \n");
-		_dev->get_semaphore()->give();
-		return false;
-		}
+	//Checking connection and if we can change the value.
 
-	    hal.scheduler->delay(100);
-
-	if (!_dev->read_registers(0x01 , &val, 1))
-		{
-		hal.console->printf("checking arduino read fail\n");
-		_dev->get_semaphore()->give();
-		return false;
-		}
-
-	if(val){
-		hal.console->printf("arduino is present.  \n");
-		hal.console->printf("val ==  %u  \n",val);
+	if (!_dev->read_registers(0x01 , &read, 1))
+	{
+		hal.console->printf("checking arduino-- read fail\n");
+		hal.console->printf("old value is ==  %u  \n",read);
 		_dev->get_semaphore()->give();
 		hal.scheduler->delay(100);
-		return true;
+		return false;
 	}
 
-	return false;
+	if (!_dev->write_register(0x01, changedvalue))
+	{
+		hal.console->printf("checking arduino-- write fail\n");
+		_dev->get_semaphore()->give();
+		hal.scheduler->delay(100);
+		return false;
+	 }
+
+	_dev->get_semaphore()->give();
+	hal.scheduler->delay(100);
+
+	_dev->get_semaphore()->take_blocking();
+	_dev->read_registers(0x00 , &read, 1);
+	if (!_dev->read_registers(0x01 , &read, 2))
+	{
+		hal.console->printf("reading again failed\n");
+		hal.console->printf("VALUE1 ==  %u  \n",read);
+		_dev->get_semaphore()->give();
+		hal.scheduler->delay(100);
+		return false;
+	}
+
+	if(read != changedvalue)
+	{
+		_dev->get_semaphore()->give();
+		hal.scheduler->delay(100);
+		hal.console->printf("value didn't change. Fail ");
+		return false;
+	}
+
+	_dev->get_semaphore()->give();
+	hal.scheduler->delay(100);
+	hal.console->printf("VALUE ==  <0x%x>  \n",read);
+	return true;
+
 }
 
-void Newardu2pix::send_cmd(CMDtype cmd,uint8_t address , uint8_t action)
+void Newardu2pix::backend_check(CMDtype cmd,uint8_t address , uint8_t action)
 {
 	CMDtype _cmd = cmd;
 	int i=-1;
@@ -154,47 +167,43 @@ void Newardu2pix::send_cmd(CMDtype cmd,uint8_t address , uint8_t action)
 		hal.console->printf("Newardu2pix::not -initialized\n");
 		return;
 	}
-	if(address != ardu_addr)
-		{
-			return;
-		}
+
 	if(address == ardu_addr)
-		{
-			i=0;
+	{
+		i=0;
+		if(drivers[i]== nullptr)
+			{
+				hal.console->printf("CAN'T read\n  \t");
+				return;
+			}
+		else{
+			if(action == 1 && write_ardu)
+			{
+				temp = drivers[i]->write_to_arduino(_cmd,ardu_addr);
+				hal.console->printf("successful/fail write===%u\n",temp);
+				if(temp)
+				{
+					write_ardu = false;
+					read_ardu = true;
+				}
+			}
+			if(action == 0 && read_ardu)
+			{
+				temp = drivers[i]->read_from_arduino(_cmd,ardu_addr);
+				hal.console->printf("successful/fail read===%u\n",temp);
+				if(temp)
+				{
+					write_ardu = true;
+					read_ardu = false;
+				}
+			}
 		}
+	}
 	else
 	{
-		hal.console->printf("ardu_addrESS NOT VALID  \n  \t");
+		hal.console->printf("address NOT VALID  \n  \t");
 		init_once = false;
 		return;
-	}
-
-	if(drivers[i]== nullptr)
-	{
-		hal.console->printf("CAN'T read\n  \t");
-		return;
-	}
-	else{
-		if(action == 1 && write_ardu)
-		{
-			temp = drivers[i]->write_to_arduino(_cmd,ardu_addr);
-			hal.console->printf("successful/fail write===%u\n",temp);
-			if(temp)
-			{
-				write_ardu = false;
-				read_ardu = true;
-			}
-		}
-		if(action == 0 && read_ardu)
-		{
-			temp = drivers[i]->read_from_arduino(_cmd,ardu_addr);
-			hal.console->printf("successful/fail read===%u\n",temp);
-			if(temp)
-			{
-				write_ardu = true;
-				read_ardu = false;
-			}
-		}
 	}
 }
 bool Newardu2pix::read_from_arduino(CMDtype cmd,uint8_t address)
@@ -217,7 +226,10 @@ bool Newardu2pix::read_from_arduino(CMDtype cmd,uint8_t address)
 	{
 				CMD_read=0x03;
 	}
-
+	if(cmd == readTemp)
+	{
+				CMD_read=0x04;
+	}
 	if(!_dev)
 	{
 		hal.console->printf("no 12c for reading\n");
@@ -225,19 +237,33 @@ bool Newardu2pix::read_from_arduino(CMDtype cmd,uint8_t address)
 	}
 	_dev->get_semaphore()->take_blocking();
 
-	bool result;
-	uint8_t read;
-
+	uint8_t read,readtemp;
 	_dev->read_registers(0x00,&read,1);
+	bool result;
 
-	result = _dev->read_registers(CMD_read, &read,1);
+	if(CMD_read == 0x04)
+	{
+		result = _dev->read_registers(CMD_read, &readtemp,2);
+	}
+	else
+	{
+		//string read
+		result = _dev->read_registers(CMD_read, &read,7);
+	}
 
 	if(result){
 		hal.console->printf("Newardu2pix:: read CMD received successful\n");
 		_dev->get_semaphore()->give();
-		print_arduino_values(read,cmd);
-			read_ardu = false;
-			write_ardu = true;
+		if(cmd == 4)
+		{
+			print_arduino_values(&readtemp,cmd);
+		}
+		else
+		{
+			print_arduino_values(&read,cmd);
+		}
+		read_ardu = false;
+		write_ardu = true;
 		return true;
 	}
 	else{
@@ -259,26 +285,22 @@ bool Newardu2pix::write_to_arduino(CMDtype cmd,uint8_t address)
 			return false;
 	}
 
-	uint8_t CMD_WRITE[] = {0xFF,0xFE,0xFE};
+	uint8_t CMD_WRITE = 0xFF,write_cmd = 0x00;
 
 	switch(cmd)
 			{
-			case printWelcome:
+			case printhello:
 			{
-				CMD_WRITE[0]=0xFF;
-				CMD_WRITE[1]=0xFF;
-				CMD_WRITE[2]=0xFF;
+				write_cmd = 0xFF;
 				break;
 			}
 			case printgpsCoor:
 			{
-				CMD_WRITE[2]=0xF2;
+				write_cmd = 0xF2;
 				break;
 			}
 			default:
-				CMD_WRITE[0]=0x00;
-				CMD_WRITE[1]=0x00;
-				CMD_WRITE[2]=0x00;
+				write_cmd = 0x00;
 				break;
 		}
 	if(!_dev)
@@ -292,7 +314,9 @@ bool Newardu2pix::write_to_arduino(CMDtype cmd,uint8_t address)
 
 	bool result;
 
-	result = _dev->transfer(CMD_WRITE,sizeof(CMD_WRITE), nullptr, 0);
+	result = _dev->write_register(CMD_WRITE,write_cmd);
+
+//	result = _dev->transfer(CMD_WRITE,sizeof(CMD_WRITE), nullptr, 0);
 
 	if(result){
 		hal.console->printf("Newardu2pix::CMD send successful write\n");
@@ -310,12 +334,18 @@ bool Newardu2pix::write_to_arduino(CMDtype cmd,uint8_t address)
 	}
 }
 
-//int32_t readfromarduino
-void Newardu2pix::print_arduino_values(uint8_t readfromarduino,CMDtype cmd)
+void Newardu2pix::print_arduino_values(uint8_t *readfromarduino,CMDtype cmd)
 {
-	hal.console->printf("reading from Arduino :\\n");
-	hal.console->printf("Command = %d\n\n",cmd);
-//	hal.console->printf("Value = %f\n\\n",readfromarduino/1e-7);
-	char n = char(readfromarduino);
-	hal.console->printf("Value = %c\n\n",n);
+	hal.console->printf("reading from Arduino :\n");
+	hal.console->printf("Command = %d\n",cmd);
+	if(cmd == 4)
+	{
+		hal.console->printf("Temperature = %d'C\n",*readfromarduino);
+	}
+	else
+	{
+		//string print
+		char *n = (char *)(readfromarduino);
+		hal.console->printf("String = %s\n",n);
+	}
 }

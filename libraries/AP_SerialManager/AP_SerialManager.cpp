@@ -569,6 +569,11 @@ void AP_SerialManager::init()
                     // Note init is handled by AP_MSP
                     break;
 #endif
+//MG
+                case SerialProtocol_Arduino:
+                			uart->begin(map_baudrate(state[i].baud),0,0);
+                			break;
+//MG
                 default:
                     uart->begin(map_baudrate(state[i].baud));
             }

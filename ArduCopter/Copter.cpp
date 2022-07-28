@@ -551,7 +551,7 @@ void Copter::ten_hz_logging_loop()
         g2.winch.write_log();
     }
 #endif
-    //NSCC
+    //MG
 //    if(arduino.init_au){
 //    arduino.send_commands(0x16,arduino.printWelcome);
 //    }
@@ -628,19 +628,35 @@ void Copter::one_hz_loop()
     // log terrain data
     terrain_logging();
 
-//NSCC
+//MG
 	if(newardu.init_once)
    {
+		static bool counter;
 		hal.console->printf("ArduCopter --write/read\n");
 		if(newardu.read_ardu)
 		{
-			newardu.send_cmd(newardu.readWelcome,0x04,0);
+			if(!counter)
+			{
+				newardu.backend_check(newardu.readWelcome,0x04,0);
+				counter = true;
+			}
+			else
+			{
+				newardu.backend_check(newardu.readTemp,0x04,0);
+				counter=false;
+			}
 		}
 		else
 		{
-			newardu.send_cmd(newardu.printWelcome,0x04,1);
+			newardu.backend_check(newardu.printhello,0x04,1);
 		}
 	}
+
+//    aus.send_reading();
+//    aus.get_reading();
+//    swc.send_reading();
+
+//MG
 
 #if HAL_ADSB_ENABLED
     adsb.set_is_flying(!ap.land_complete);
