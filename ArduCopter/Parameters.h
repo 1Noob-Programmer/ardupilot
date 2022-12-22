@@ -373,6 +373,9 @@ public:
         k_param_arming, // 252  - AP_Arming
         k_param_logger = 253, // 253 - Logging Group
 
+		//MG
+		k_param_new_parm_chk,
+
         // 254,255: reserved
 
         k_param_vehicle = 257, // vehicle common block of parameters
@@ -488,6 +491,8 @@ public:
 
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo var_info[];
+//MG - checking parameters
+    static const struct AP_Param::GroupInfo var_info2[];
 
     // altitude at which nav control can start in takeoff
     AP_Float wp_navalt_min;
@@ -667,6 +672,9 @@ public:
     AP_Float                pilot_y_rate;
     AP_Float                pilot_y_expo;
     AP_Int8                 surftrak_mode;
+
+//MG
+    AP_Int8					new_parm_chk;
 };
 
 extern const AP_Param::Info        var_info[];

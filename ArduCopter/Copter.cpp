@@ -655,7 +655,11 @@ void Copter::one_hz_loop()
 //    aus.send_reading();
 //    aus.get_reading();
 //    swc.send_reading();
+   if(copter.g2.new_parm_chk.get() == 1)
+   {
+	   //hal.console->printf("parameter block 2-b working \n\n");
 
+   }
 //MG
 
 #if HAL_ADSB_ENABLED

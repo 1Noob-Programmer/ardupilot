@@ -1099,7 +1099,17 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("SURFTRAK_MODE", 51, ParametersG2, surftrak_mode, (uint8_t)Copter::SurfaceTracking::Surface::GROUND),
 
-    AP_GROUPEND
+	AP_SUBGROUPEXTENSION("", 52, ParametersG2, var_info2),
+//MG
+
+	AP_GROUPEND
+};
+//MG
+const AP_Param::GroupInfo ParametersG2::var_info2[] = {
+
+	AP_GROUPINFO("NEW_PARAM_CHECK", 1, ParametersG2, new_parm_chk, 0),
+
+	AP_GROUPEND
 };
 
 /*
@@ -1145,6 +1155,7 @@ ParametersG2::ParametersG2(void)
 #endif
 {
     AP_Param::setup_object_defaults(this, var_info);
+    AP_Param::setup_object_defaults(this, var_info2);
 }
 
 /*
